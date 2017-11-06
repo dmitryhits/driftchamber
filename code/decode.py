@@ -19,9 +19,9 @@ from struct import unpack
 ########################################
 
 if not len(argv) == 2:
-    print "Wrong number of arguments!"
-    print "Usage: python decode.py filename.dat"
-    print "Exiting..."
+    print("Wrong number of arguments!")
+    print("Usage: python decode.py filename.dat")
+    print("Exiting...")
     exit()
 
 input_filename = argv[1]
@@ -68,9 +68,9 @@ timebins = []
 while True:
     header = f.read(4)
     # For skipping the initial time header
-    if header == "TIME":
+    if header == b"TIME":
         continue
-    elif header.startswith("C"):
+    elif header.startswith(b"C"):
         n_ch = n_ch + 1
         # Create variables ...
         channels_t.append(zeros(1024, dtype=float32))
@@ -84,13 +84,13 @@ while True:
 
     # Increment the number of boards when seeing a new serial number
     # and store the serial numbers in the board serial numbers vector
-    elif header.startswith("B#"):
-        board_serial = unpack('H', header[2:])[0]
+    elif header.startswith(b"B#"):
+        board_serial = unpack(b'H', header[2:])[0]
         board_serials.push_back(board_serial)
         n_boards = n_boards + 1
 
     # End the loop if header is not CXX or a serial number
-    elif header == "EHDR":
+    elif header == b"EHDR":
         break
 
 # This is the main loop One iteration corresponds to reading one channel every
@@ -137,23 +137,23 @@ while True:
     header = f.read(4)
 
     # Handle next board
-    if header.startswith("B#"):
+    if header.startswith(b"B#"):
         current_board = current_board + 1
-        tcell = unpack('H', f.read(4)[2:])[0]
+        tcell = unpack(b'H', f.read(4)[2:])[0]
         continue
 
     # End of Event
-    elif header == "EHDR":
-        # Fille previous event
+    elif header == b"EHDR":
+        # Fill previous event
         outtree.Fill()
         is_new_event = True
 
     # Read and store data
-    elif header.startswith("C"):
+    elif header.startswith(b"C"):
         # the voltage info is 1024 floats with 2-byte precision
         chn_i = int(header[-1]) + current_board * 4
 
-        voltage_ints = unpack('H'*1024, f.read(2*1024))
+        voltage_ints = unpack(b'H'*1024, f.read(2*1024))
 
         # Calculate precise timing using the time bins and trigger cell
         # see p. 23 in the reference
