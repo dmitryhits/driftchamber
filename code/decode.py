@@ -73,14 +73,14 @@ while True:
     elif header.startswith(b"C"):
         n_ch = n_ch + 1
         # Create variables ...
-        channels_t.append(zeros(1024, dtype=float32))
-        channels_v.append(zeros(1024, dtype=float32))
+        channels_t.append(zeros(2048, dtype=float32))
+        channels_v.append(zeros(2048, dtype=float32))
         # .. And add to tree
-        outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[1024]/F")
-        outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[1024]/F")
+        outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[2048]/F")
+        outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[2048]/F")
 
         # Write timebins to numpy array
-        timebins.append(array(unpack('f'*1024, f.read(4*1024))))
+        timebins.append(array(unpack('f'*2048, f.read(4*2048))))
 
     # Increment the number of boards when seeing a new serial number
     # and store the serial numbers in the board serial numbers vector
@@ -150,15 +150,17 @@ while True:
 
     # Read and store data
     elif header.startswith(b"C"):
-        # the voltage info is 1024 floats with 2-byte precision
-        chn_i = int(header[-1]) + current_board * 4
+        # the voltage info is 2048 floats with 2-byte precision
+        print('header  is ', header, ' ; current board is ', current_board)
+        chn_i = int(header.decode('ascii')[-1]) + current_board * 4
 
-        voltage_ints = unpack(b'H'*1024, f.read(2*1024))
+        voltage_ints = unpack(b'H'*2048, f.read(2*2048))
 
         # Calculate precise timing using the time bins and trigger cell
         # see p. 23 in the reference
+        print('size = ', len(timebins),' : while index = ', chn_i)
         t = cumsum(roll(timebins[chn_i-1], -tcell))
-        t_0 = t[(1024-tcell)%1024] # time of first cell for correction
+        t_0 = t[(2048-tcell)%2048] # time of first cell for correction
         if chn_i % 4 == 1:
             t_00 = t_0
         t = t - (t_0 - t_00) # correction
@@ -171,7 +173,7 @@ while True:
             channels_t[chn_i-1][i] = t[i]
 
     # End of File
-    elif header == "":
+    elif header == b"":
         outtree.Fill()
         break
 
