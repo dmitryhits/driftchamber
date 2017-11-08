@@ -75,14 +75,14 @@ while True:
     elif header.startswith(b"C"):
         n_ch = n_ch + 1
         # Create variables ...
-        channels_t.append(zeros(2048, dtype=float32))
-        channels_v.append(zeros(2048, dtype=float32))
+        channels_t.append(zeros(1024, dtype=float32))
+        channels_v.append(zeros(1024, dtype=float32))
         # .. And add to tree
-        outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[2048]/F")
-        outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[2048]/F")
+        outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[1024]/F")
+        outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[1024]/F")
 
         # Write timebins to numpy array
-        timebins.append(array(unpack('H'*2048, f.read(2*2048))))
+        timebins.append(array(unpack('f'*1024, f.read(4*1024))))
         #plt.plot(arange(2048), unpack('f'*2048, f.read(4*2048)))
         #print(unpack('f'*2048, f.read(4*2048)))
 
@@ -119,6 +119,7 @@ while True:
     # Sart of Event
     if is_new_event:
         event_serial[0] = unpack("I", f.read(4))[0]
+        print("Event : ", event_serial[0])
         is_new_event = False
 
         # Set the timestamp, where the milliseconds need to be converted to
@@ -155,17 +156,18 @@ while True:
 
     # Read and store data
     elif header.startswith(b"C"):
-        # the voltage info is 2048 floats with 2-byte precision
+        # the voltage info is 1024 floats with 2-byte precision
         print('header  is ', header, ' ; current board is ', current_board)
         chn_i = int(header.decode('ascii')[-1]) + current_board * 4
-
-        voltage_ints = unpack(b'H'*2048, f.read(2*2048))
+        scaler = unpack('f', f.read(4))
+        print("scaler =", scaler)
+        voltage_ints = unpack(b'H'*1024, f.read(2*1024))
 
         # Calculate precise timing using the time bins and trigger cell
         # see p. 23 in the reference
-        print('size = ', len(timebins),' : while index = ', chn_i)
+        #print('size = ', len(timebins),' : while index = ', chn_i)
         t = cumsum(roll(timebins[chn_i-1], -tcell))
-        t_0 = t[(2048-tcell)%2048] # time of first cell for correction
+        t_0 = t[(1024-tcell)%1024] # time of first cell for correction
         if chn_i % 4 == 1:
             t_00 = t_0
         t = t - (t_0 - t_00) # correction
