@@ -11,8 +11,9 @@ based on decode.C by Dmitry Hits
 from sys import argv, exit
 from ROOT import TFile, TTree, TTimeStamp, AddressOf
 from ROOT.std import vector
-from numpy import array, uint32, cumsum, roll, zeros, float32
+from numpy import array, uint32, cumsum, roll, zeros, float32, arange
 from struct import unpack
+import matplotlib.pyplot as plt
 
 ########################################
 # Prepare Input
@@ -67,6 +68,7 @@ timebins = []
 
 while True:
     header = f.read(4)
+    print(header, end=' | ')
     # For skipping the initial time header
     if header == b"TIME":
         continue
@@ -80,12 +82,15 @@ while True:
         outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[2048]/F")
 
         # Write timebins to numpy array
-        timebins.append(array(unpack('f'*2048, f.read(4*2048))))
+        timebins.append(array(unpack('H'*2048, f.read(2*2048))))
+        #plt.plot(arange(2048), unpack('f'*2048, f.read(4*2048)))
+        #print(unpack('f'*2048, f.read(4*2048)))
 
     # Increment the number of boards when seeing a new serial number
     # and store the serial numbers in the board serial numbers vector
     elif header.startswith(b"B#"):
         board_serial = unpack(b'H', header[2:])[0]
+        print("Board serial is: ", board_serial)
         board_serials.push_back(board_serial)
         n_boards = n_boards + 1
 
