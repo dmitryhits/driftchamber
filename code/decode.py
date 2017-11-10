@@ -131,6 +131,7 @@ while True:
         # Fluff the serial number and read in trigger cell
         fluff = f.read(4)
         tcell = unpack('H', f.read(4)[2:])[0]
+        print('Trigger cell # ', tcell)
 
         # Reset current board number
         current_board = 0
@@ -159,15 +160,19 @@ while True:
         # the voltage info is 1024 floats with 2-byte precision
         print('header  is ', header, ' ; current board is ', current_board)
         chn_i = int(header.decode('ascii')[-1]) + current_board * 4
-        scaler = unpack('f', f.read(4))
-        print("scaler =", scaler)
+        scaler = unpack('I', f.read(4))
+        print("scaler =", scaler[0])
         voltage_ints = unpack(b'H'*1024, f.read(2*1024))
 
         # Calculate precise timing using the time bins and trigger cell
         # see p. 23 in the reference
         #print('size = ', len(timebins),' : while index = ', chn_i)
-        t = cumsum(roll(timebins[chn_i-1], -tcell))
+        # the next line creates the following sum
+        # t[trigger_cell] 
+        t = cumsum(roll(timebins[chn_i-1], -tcell)+roll(timebins[chn_i-1], -tcell))[::2]
+        print("t: ", t)
         t_0 = t[(1024-tcell)%1024] # time of first cell for correction
+        print('t0:', t_0)
         if chn_i % 4 == 1:
             t_00 = t_0
         t = t - (t_0 - t_00) # correction
