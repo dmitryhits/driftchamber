@@ -49,13 +49,17 @@ outtree.Branch("EventNumber", event_serial, "EventNumber/i")
 # Actual Work
 ########################################
 
-# Read in effective time width bins in ns and calculate the relative time from
-# the effective time bins. This is just a rough calculation, see DRS manual
-# p. 24 on how to do this more precise using the trigger cell information.
-# The script also gets channel number information from this section to create
-# the appropriate number of tree branches.
+"""
+Read in effective time width bins in ns and calculate the relative time from
+the effective time bins. This is just a rough calculation before the correction 
+done further down in the code
 
-# To increase to the total number of channels and boards
+The script also gets channel number information from this section to create
+the appropriate number of tree branches.
+
+NOTE: the channels 0-3 are for the first board and channels 4-7 are for the second board
+"""
+# To hold to the total number of channels and boards
 n_ch = 0
 n_boards = 0
 
@@ -65,10 +69,11 @@ channels_v = []
 
 # List of numpy arrays to store the time bin information
 timebins = []
-
+"""
+This loop extracts time information for each DRS4 cell
+"""
 while True:
     header = f.read(4)
-    print(header, end=' | ')
     # For skipping the initial time header
     if header == b"TIME":
         continue
@@ -83,14 +88,11 @@ while True:
 
         # Write timebins to numpy array
         timebins.append(array(unpack('f'*1024, f.read(4*1024))))
-        #plt.plot(arange(2048), unpack('f'*2048, f.read(4*2048)))
-        #print(unpack('f'*2048, f.read(4*2048)))
 
     # Increment the number of boards when seeing a new serial number
     # and store the serial numbers in the board serial numbers vector
     elif header.startswith(b"B#"):
         board_serial = unpack(b'H', header[2:])[0]
-        print("Board serial is: ", board_serial)
         board_serials.push_back(board_serial)
         n_boards = n_boards + 1
 
@@ -98,6 +100,7 @@ while True:
     elif header == b"EHDR":
         break
 
+"""
 # This is the main loop One iteration corresponds to reading one channel every
 # few channels a new event can start We know that this if the case if we see
 # "EHDR" instead of "C00x" (x=1..4) If we have a new event: Fill the tree, reset
@@ -106,6 +109,8 @@ while True:
 # What happens when multiple boards are daisychained: after the C004 voltages of
 # the first board, there is the serial number of the next board before it starts
 # again with C001.
+"""
+
 
 current_board = 0
 tcell = 0 # current trigger cell
@@ -116,7 +121,7 @@ info_string = "Reading in events measurend with {0} channels on {1} board(s)..."
 print(info_string.format(n_ch, n_boards))
 
 while True:
-    # Sart of Event
+    # Start of Event
     if is_new_event:
         event_serial[0] = unpack("I", f.read(4))[0]
         print("Event : ", event_serial[0])
@@ -131,8 +136,6 @@ while True:
         # Fluff the serial number and read in trigger cell
         fluff = f.read(4)
         tcell = unpack('H', f.read(4)[2:])[0]
-        print('Trigger cell # ', tcell)
-
         # Reset current board number
         current_board = 0
         continue
@@ -158,28 +161,35 @@ while True:
     # Read and store data
     elif header.startswith(b"C"):
         # the voltage info is 1024 floats with 2-byte precision
-        print('header  is ', header, ' ; current board is ', current_board)
         chn_i = int(header.decode('ascii')[-1]) + current_board * 4
         scaler = unpack('I', f.read(4))
-        print("scaler =", scaler[0])
         voltage_ints = unpack(b'H'*1024, f.read(2*1024))
 
-        # Calculate precise timing using the time bins and trigger cell
-        # see p. 23 in the reference
-        #print('size = ', len(timebins),' : while index = ', chn_i)
-        # the next line creates the following sum
-        # t[trigger_cell] 
-        t = cumsum(roll(timebins[chn_i-1], -tcell)+roll(timebins[chn_i-1], -tcell))[::2]
-        print("t: ", t)
-        t_0 = t[(1024-tcell)%1024] # time of first cell for correction
-        print('t0:', t_0)
+        """
+        Calculate precise timing using the time bins and trigger cell
+        see p. 24 of the DRS4 manual for the explanation
+        the following lines sum up the times of all cells starting from the trigger cell
+        to the i_th cell and select only even members, because the amplitude of the adjacent cells are averaged.
+        The width of the bins 1024-2047 is identical to the bins 0-1023, that is why the arrays are simply extended
+        before performing the cumsum operation
+        """
+        timebins_full = list(roll(timebins[chn_i-1], -tcell))+list(roll(timebins[chn_i-1], -tcell))
+        t = cumsum(timebins_full)[::2]
+        # time of first cell for correction, find the time of the first cell for each channel,
+        # because only these cells are aligned in time
+        t_0 = t[(1024-tcell)%1024]
         if chn_i % 4 == 1:
             t_00 = t_0
+        # Align all channels with the first channel
         t = t - (t_0 - t_00) # correction
-        # Note: it is a bit unclear how to do the correction with
-        # multiple boards, so the boards are just corrected independently
-        # for now
-
+        # TODO: it is a bit unclear how to do the correction with
+        # TODO: multiple boards, so the boards are just corrected independently for now
+        # TODO: find the alignment of the boards by sending the same signal to both boards
+        """
+        The following lists of numpy arrays can be plotted or used in the further analysis.
+        
+        NOTE: the channels 0-3 are for the first board and channels 4-7 are for the second board
+        """
         for i, x in enumerate(voltage_ints):
             channels_v[chn_i-1][i] = ((x / 65535.) - 0.5)
             channels_t[chn_i-1][i] = t[i]
