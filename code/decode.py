@@ -9,8 +9,8 @@ based on decode.C by Dmitry Hits
 """
 
 from sys import argv, exit
-from ROOT import TFile, TTree, TTimeStamp, AddressOf
-from ROOT.std import vector
+#from ROOT import TFile, TTree, TTimeStamp, AddressOf
+#from ROOT.std import vector
 from numpy import array, uint32, cumsum, roll, zeros, float32, arange
 from struct import unpack
 import matplotlib.pyplot as plt
@@ -33,16 +33,17 @@ f = open( input_filename, "rb")
 ########################################
 
 # File and Trees
-outfile = TFile(input_filename.replace(".dat",".root"), 'recreate')
-outtree = TTree('tree', 'tree')
+#outfile = TFile(input_filename.replace(".dat",".root"), 'recreate')
+#outtree = TTree('tree', 'tree')
 
 # Create board and event serial number and date variables and add to tree
-timestamp = TTimeStamp()
-outtree.Branch("EventDateTime", "TTimeStamp", AddressOf(timestamp))
-board_serials = vector(int)()
-outtree.Branch("BoardSerials", board_serials)
+#timestamp = TTimeStamp()
+#outtree.Branch("EventDateTime", "TTimeStamp", AddressOf(timestamp))
+#board_serials = vector(int)()
+board_serials = []
+#outtree.Branch("BoardSerials", board_serials)
 event_serial = array([0], dtype=uint32)
-outtree.Branch("EventNumber", event_serial, "EventNumber/i")
+#outtree.Branch("EventNumber", event_serial, "EventNumber/i")
 # more branches will be added dynamically in the first while loop
 
 ########################################
@@ -83,8 +84,8 @@ while True:
         channels_t.append(zeros(1024, dtype=float32))
         channels_v.append(zeros(1024, dtype=float32))
         # .. And add to tree
-        outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[1024]/F")
-        outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[1024]/F")
+        #outtree.Branch("chn{}_t".format(n_ch), channels_t[-1], "chn{}_t[1024]/F")
+        #outtree.Branch("chn{}_v".format(n_ch), channels_v[-1], "chn{}_v[1024]/F")
 
         # Write timebins to numpy array
         timebins.append(array(unpack('f'*1024, f.read(4*1024))))
@@ -93,7 +94,7 @@ while True:
     # and store the serial numbers in the board serial numbers vector
     elif header.startswith(b"B#"):
         board_serial = unpack(b'H', header[2:])[0]
-        board_serials.push_back(board_serial)
+        board_serials.append(board_serial)
         n_boards = n_boards + 1
 
     # End the loop if header is not CXX or a serial number
@@ -130,8 +131,8 @@ while True:
         # Set the timestamp, where the milliseconds need to be converted to
         # nanoseconds to fit the function arguments
         dt_list = unpack("H"*8, f.read(16))
-        timestamp_args = list(dt_list[:-2]) + [dt_list[-2]*int(1e6), 1, 0]
-        timestamp.Set(*timestamp_args)
+        #timestamp_args = list(dt_list[:-2]) + [dt_list[-2]*int(1e6), 1, 0]
+        #timestamp.Set(*timestamp_args)
 
         # Fluff the serial number and read in trigger cell
         fluff = f.read(4)
@@ -155,7 +156,7 @@ while True:
     # End of Event
     elif header == b"EHDR":
         # Fill previous event
-        outtree.Fill()
+        #outtree.Fill()
         is_new_event = True
 
     # Read and store data
@@ -194,12 +195,15 @@ while True:
             channels_v[chn_i-1][i] = ((x / 65535.) - 0.5)
             channels_t[chn_i-1][i] = t[i]
 
+        print('Channel', chn_i, 'min = ', channels_v[chn_i-1].min())
+
     # End of File
     elif header == b"":
-        outtree.Fill()
+        #outtree.Fill()
         break
+
 
 # Clean up
 f.close()
-outtree.Write()
-outfile.Close()
+#outtree.Write()
+#outfile.Close()
