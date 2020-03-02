@@ -67,7 +67,7 @@ n_boards = 0
 # Empty lists for containing the variables connected to the tree branches
 channels_t = []
 channels_v = []
-
+events = []
 # List of numpy arrays to store the time bin information
 timebins = []
 """
@@ -125,9 +125,9 @@ while True:
     # Start of Event
     if is_new_event:
         event_serial[0] = unpack("I", f.read(4))[0]
-        print("Event : ", event_serial[0])
+        if event_serial[0]%100 == 0:
+            print("Event : ", event_serial[0], '        ', end='\r')
         is_new_event = False
-
         # Set the timestamp, where the milliseconds need to be converted to
         # nanoseconds to fit the function arguments
         dt_list = unpack("H"*8, f.read(16))
@@ -157,10 +157,15 @@ while True:
     elif header == b"EHDR":
         # Fill previous event
         #outtree.Fill()
+        # Save information from the previous event
+        #event = []
+        events.append(array(channels_v[1]))
+        #events.append(array(event))
         is_new_event = True
 
-    # Read and store data
-    elif header.startswith(b"C"):
+
+    # Read and store data from a channel read from the header
+    elif header.startswith(b'C'):
         # the voltage info is 1024 floats with 2-byte precision
         chn_i = int(header.decode('ascii')[-1]) + current_board * 4
         scaler = unpack('I', f.read(4))
@@ -191,11 +196,12 @@ while True:
         
         NOTE: the channels 0-3 are for the first board and channels 4-7 are for the second board
         """
-        for i, x in enumerate(voltage_ints):
+        for i, x in enumerate(voltage_ints): # i is the sample number, x is the voltage value of the sample in ADC channels
             channels_v[chn_i-1][i] = ((x / 65535.) - 0.5)
             channels_t[chn_i-1][i] = t[i]
 
-        print('Channel', chn_i, 'min = ', channels_v[chn_i-1].min())
+        # print('Channel', chn_i, 'min = ', channels_v[chn_i-1].min())
+
 
     # End of File
     elif header == b"":
@@ -205,5 +211,6 @@ while True:
 
 # Clean up
 f.close()
+print('\n')
 #outtree.Write()
 #outfile.Close()
