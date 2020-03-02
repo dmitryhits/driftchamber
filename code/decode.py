@@ -159,7 +159,7 @@ while True:
         #outtree.Fill()
         # Save information from the previous event
         #event = []
-        events.append(array(channels_v[1]))
+        events.append(array(list(zip(channels_t[1],channels_v[1]))))
         #events.append(array(event))
         is_new_event = True
 
