@@ -36,8 +36,6 @@ muon tracks are distributed in the wire chamber and compare with measurement.
 Generates plots showing the distribution on incident angles and positions.
 
 ## References
-\[2\]: https://polybox.ethz.ch/index.php/s/6WYbMPdgEID5oBW
-
 \[2\]: https://www.psi.ch/drs/evaluation-board
 
 \[3\]: https://github.com/gkasieczka/testbeam/blob/master/decode.py
