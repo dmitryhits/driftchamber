@@ -68,8 +68,11 @@ n_boards = 0
 channels_t = []
 channels_v = []
 events = []
+data = []
 # List of numpy arrays to store the time bin information
 timebins = []
+# Analysis arrays
+min_trace = []
 """
 This loop extracts time information for each DRS4 cell
 """
@@ -199,7 +202,10 @@ while True:
         for i, x in enumerate(voltage_ints): # i is the sample number, x is the voltage value of the sample in ADC channels
             channels_v[chn_i-1][i] = ((x / 65535.) - 0.5)
             channels_t[chn_i-1][i] = t[i]
-
+        
+        if chn_i == 8:
+            data.append(array(list(zip(channels_t, channels_v))))
+        # min_trace.append((chn_i, channels_v[chn_i-1].min(), channels_t[chn_i-1][channels_v[chn_i-1].argmin()]))
         # print('Channel', chn_i, 'min = ', channels_v[chn_i-1].min())
 
 
